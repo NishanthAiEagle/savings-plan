@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AR Video Try-On</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: transparent !important;
+      height: 100%;
+      width: 100%;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    canvas, .a-canvas, .a-canvas canvas {
+      background: transparent !important;
+    }
+
+    a-scene {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      width: 100vw !important;
+      height: 100vh !important;
+      margin: 0;
+      background: transparent !important;
+    }
+
+    #logo {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      width: 100px;
+      z-index: 100;
+    }
+
+    .button-panel {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: none;
+      z-index: 100;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .button-panel.visible {
+      display: grid;
+      opacity: 1;
+    }
+
+    .plan-button {
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      background-color: #5E0F8B;
+      color: #fff;
+      cursor: pointer;
+      min-width: 120px;
+      transition: background 0.3s;
+    }
+
+    .plan-button:hover {
+      background-color: #7a17b8;
+    }
+
+    .a-enter-vr-button {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <img src="logo.png" id="logo" alt="Logo">
+
+  <div class="button-panel" id="planButtons">
+    <button class="plan-button" data-video="#diamondVideo">PLAN 1</button>
+    <button class="plan-button" data-video="#goldVideo">PLAN 2</button>
+    <button class="plan-button" data-video="#gemstoneVideo">PLAN 3</button>
+  </div>
+
+  <a-scene 
+    mindar-image="imageTargetSrc: ./targets.mind" 
+    color-space="sRGB" 
+    renderer="colorManagement: true, physicallyCorrectLights, antialias: true" 
+    vr-mode-ui="enabled: false" 
+    device-orientation-permission-ui="enabled: false">
+
+    <a-assets>
+      <video id="diamondVideo" src="diamond.mp4" playsinline preload="auto" loop></video>
+      <video id="goldVideo" src="gold.mp4" playsinline preload="auto" loop></video>
+      <video id="gemstoneVideo" src="gemstone.mp4" playsinline preload="auto" loop></video>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity id="target1" mindar-image-target="targetIndex: 0">
+      <a-plane 
+        id="videoDisplay" 
+        position="0 0 0" 
+        width="1" 
+        height="0.56" 
+        material="shader: flat">
+      </a-plane>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const videoDisplay = document.querySelector('#videoDisplay');
+    const target = document.querySelector('#target1');
+    const buttonsContainer = document.querySelector('#planButtons');
+    const buttons = document.querySelectorAll('.plan-button');
+    let currentVideo = null;
+
+    // Hide buttons until target is found
+    buttonsContainer.classList.remove("visible");
+    buttonsContainer.style.display = "none";
+
+    // Show buttons when target is found
+    target.addEventListener('targetFound', () => {
+      buttonsContainer.style.display = 'grid';
+      setTimeout(() => buttonsContainer.classList.add('visible'), 100);
+    });
+
+    // Hide buttons & pause videos when target is lost
+    target.addEventListener('targetLost', () => {
+      buttonsContainer.classList.remove('visible');
+      setTimeout(() => { buttonsContainer.style.display = 'none'; }, 500);
+      if (currentVideo) {
+        currentVideo.pause();
+      }
+    });
+
+    // Play/pause video on button click
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const videoId = btn.getAttribute('data-video');
+        const videoEl = document.querySelector(videoId);
+
+        if (currentVideo && currentVideo !== videoEl) {
+          currentVideo.pause();
+          currentVideo.currentTime = 0;
+        }
+
+        if (videoEl.paused) {
+          videoDisplay.setAttribute('material', 'src', videoId);
+          videoEl.play();
+          currentVideo = videoEl;
+        } else {
+          videoEl.pause();
+        }
+      });
+    });
+
+    /* ------------------------------
+       🔒 Disable Right-click & DevTools
+       ------------------------------ */
+    document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    document.addEventListener("keydown", (e) => {
+      if (
+        e.key === "F12" || 
+        (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C")) || 
+        (e.ctrlKey && e.key.toLowerCase() === "u")
+      ) {
+        e.preventDefault();
+        alert("🚫 Developer Tools are disabled on this page.");
+      }
+    });
+
+    // Extra layer – detect DevTools open
+    setInterval(() => {
+      const before = new Date();
+      debugger;
+      const after = new Date();
+      if (after - before > 100) {
+        alert("🚫 Developer Tools detected. Please close them to continue.");
+        window.location.reload();
+      }
+    }, 2000);
+  </script>
+</body>
+</html>
